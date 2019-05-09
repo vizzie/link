@@ -49,6 +49,20 @@ int AudioPlatform::audioCallback(jack_nframes_t nframes, void* pvUserData)
   return pAudioPlatform->audioCallback(nframes);
 }
 
+void AudioPlatform::latencyCallback(jack_latency_callback_mode_t, void* pvUserData)
+{
+  AudioPlatform* pAudioPlatform = static_cast<AudioPlatform*>(pvUserData);
+  pAudioPlatform->setLatency();
+}
+
+void AudioPlatform::latencyCallback()
+{
+  jack_latency_range_t latencyRange;
+  jack_port_get_latency_range(mpJackPorts[0], JackPlaybackLatency, &latencyRange);
+  mEngine.mOutputLatency =
+    std::chrono::microseconds(llround(1.0e6 * latencyRange.max / mEngine.mSampleRate));
+}
+
 int AudioPlatform::audioCallback(jack_nframes_t nframes)
 {
   using namespace std::chrono;
@@ -71,6 +85,7 @@ int AudioPlatform::audioCallback(jack_nframes_t nframes)
 
   return 0;
 }
+
 
 void AudioPlatform::initialize()
 {
@@ -107,6 +122,14 @@ void AudioPlatform::initialize()
   };
 
   mpJackPorts = new jack_port_t*[2];
+
+  const double bufferSize = jack_get_buffer_size(mpJackClient);
+  const double sampleRate = jack_get_sample_rate(mpJackClient);
+  mEngine.setBufferSize(static_cast<std::size_t>(bufferSize));
+  mEngine.setSampleRate(sampleRate);
+
+  jack_set_latency_callback(mpJackClient, AudioPlatform::latencyCallback, this);
+
   for (int k = 0; k < 2; ++k)
   {
     const std::string port_name = "out_" + std::to_string(k + 1);
@@ -121,15 +144,6 @@ void AudioPlatform::initialize()
   }
 
   jack_set_process_callback(mpJackClient, AudioPlatform::audioCallback, this);
-
-  const double bufferSize = jack_get_buffer_size(mpJackClient);
-  const double sampleRate = jack_get_sample_rate(mpJackClient);
-
-  mEngine.setBufferSize(static_cast<std::size_t>(bufferSize));
-  mEngine.setSampleRate(sampleRate);
-
-  mEngine.mOutputLatency =
-    std::chrono::microseconds(llround(1.0e6 * bufferSize / sampleRate));
 }
 
 void AudioPlatform::uninitialize()

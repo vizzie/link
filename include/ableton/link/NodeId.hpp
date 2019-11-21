@@ -42,18 +42,15 @@ struct NodeId : NodeIdArray
   {
   }
 
+  template <typename Random>
   static NodeId random()
   {
     using namespace std;
-
-    random_device rd;
-    mt19937 gen(rd());
-    // uint8_t not standardized for this type - use unsigned
-    uniform_int_distribution<unsigned> dist(33, 126); // printable ascii chars
-
     NodeId nodeId;
-    generate(
-      nodeId.begin(), nodeId.end(), [&] { return static_cast<uint8_t>(dist(gen)); });
+
+    Random random;
+    generate(nodeId.begin(), nodeId.end(), [&] { return random(); });
+
     return nodeId;
   }
 

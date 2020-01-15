@@ -1,6 +1,5 @@
 #include "driver/gpio.h"
 #include "esp_event.h"
-#include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
@@ -22,6 +21,7 @@ char* if_indextoname(unsigned int ifindex, char* ifname)
 void tick_task(void* user_param)
 {
   auto pLink = static_cast<ableton::Link*>(user_param);
+  gpio_set_direction(LED, GPIO_MODE_OUTPUT);
   while (true)
   {
     const auto state = pLink->captureAudioSessionState();
@@ -30,31 +30,21 @@ void tick_task(void* user_param)
   }
 }
 
-void link_task(void* user_param)
+extern "C" void app_main()
 {
   ESP_ERROR_CHECK(nvs_flash_init());
   tcpip_adapter_init();
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   ESP_ERROR_CHECK(example_connect());
-  esp_wifi_set_ps(WIFI_PS_NONE);
-
   ableton::Link link(120.0f);
-  link.enable(true);
 
   xTaskCreatePinnedToCore(
-    tick_task, "tick_task", 8192, static_cast<void*>(&link), 10, nullptr, 1);
+    tick_task, "tick", 8192, static_cast<void*>(&link), 10, nullptr, 1);
+
+  link.enable(true);
 
   while (true)
   {
-    vTaskDelay(portMAX_DELAY);
+    ableton::link::platform::IoContext::poll();
   }
-}
-
-extern "C" void app_main()
-{
-  gpio_set_direction(LED, GPIO_MODE_OUTPUT);
-
-  xTaskCreatePinnedToCore(link_task, "link_task", 8192, nullptr, 10, nullptr, 0);
-
-  vTaskDelete(nullptr);
 }

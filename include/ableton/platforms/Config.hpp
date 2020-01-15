@@ -38,8 +38,8 @@
 #include <ableton/platforms/posix/ScanIpIfAddrs.hpp>
 #include <ableton/platforms/stl/Random.hpp>
 #elif defined(ESP_PLATFORM)
-#include <ableton/platforms/asio/Context.hpp>
 #include <ableton/platforms/esp32/Clock.hpp>
+#include <ableton/platforms/esp32/Context.hpp>
 #include <ableton/platforms/esp32/Random.hpp>
 #include <ableton/platforms/esp32/ScanIpIfAddrs.hpp>
 #endif
